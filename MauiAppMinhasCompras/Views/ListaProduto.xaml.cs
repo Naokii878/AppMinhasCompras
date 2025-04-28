@@ -1,8 +1,7 @@
+namespace MauiAppMinhasCompras.Views;
 using MauiAppMinhasCompras.Models;
 using System.Collections.ObjectModel;
-
-namespace MauiAppMinhasCompras.Views;
-
+// explicação do código abaixo:
 public partial class ListaProduto : ContentPage
 {
     ObservableCollection<Produto> lista = new ObservableCollection<Produto>();
@@ -10,7 +9,7 @@ public partial class ListaProduto : ContentPage
     public ListaProduto()
     {
         InitializeComponent();
-
+        CarregarCategorias(); // inicializa o método CarregarCategorias
         lst_produtos.ItemsSource = lista;
     }
 
@@ -19,9 +18,7 @@ public partial class ListaProduto : ContentPage
         try
         {
             lista.Clear();
-
             List<Produto> tmp = await App.Db.GetAll();
-
             tmp.ForEach(i => lista.Add(i));
         }
         catch (Exception ex)
@@ -29,13 +26,11 @@ public partial class ListaProduto : ContentPage
             await DisplayAlert("Ops", ex.Message, "OK");
         }
     }
-
     private void ToolbarItem_Clicked(object sender, EventArgs e)
     {
         try
         {
             Navigation.PushAsync(new Views.NovoProduto());
-
         }
         catch (Exception ex)
         {
@@ -48,13 +43,9 @@ public partial class ListaProduto : ContentPage
         try
         {
             string q = e.NewTextValue;
-
             lst_produtos.IsRefreshing = true;
-
             lista.Clear();
-
             List<Produto> tmp = await App.Db.Search(q);
-
             tmp.ForEach(i => lista.Add(i));
         }
         catch (Exception ex)
@@ -69,34 +60,40 @@ public partial class ListaProduto : ContentPage
 
     private void ToolbarItem_Clicked_1(object sender, EventArgs e)
     {
-        double soma = lista.Sum(i => i.Total);
-
-        string msg = $"O total é {soma:C}";
-
-        DisplayAlert("Total dos Produtos", msg, "OK");
+        try
+        {
+            double soma = lista.Sum(i => i.Total);
+            string msg = $" O total é {soma:C}";
+            DisplayAlert("Total dos Produtos", msg, "OK");
+        }
+        catch (Exception ex)
+        {
+            DisplayAlert("Ops", ex.Message, "OK");
+        }
     }
 
     private async void MenuItem_Clicked(object sender, EventArgs e)
     {
+
         try
         {
-            MenuItem selecinado = sender as MenuItem;
-
-            Produto p = selecinado.BindingContext as Produto;
-
-            bool confirm = await DisplayAlert(
-                "Tem Certeza?", $"Remover {p.Descricao}?", "Sim", "Não");
-
-            if(confirm)
+            MenuItem selecionado = sender as MenuItem;
+            Produto p = selecionado.BindingContext as Produto;
+            bool confirm = await DisplayAlert("Confirmação",
+                $"Deseja excluir o produto {p.Descricao}?", "Sim", "Não");
+            if (confirm)
             {
                 await App.Db.Delete(p.Id);
                 lista.Remove(p);
             }
         }
+
         catch (Exception ex)
         {
             await DisplayAlert("Ops", ex.Message, "OK");
         }
+
+
     }
 
     private void lst_produtos_ItemSelected(object sender, SelectedItemChangedEventArgs e)
@@ -104,7 +101,6 @@ public partial class ListaProduto : ContentPage
         try
         {
             Produto p = e.SelectedItem as Produto;
-
             Navigation.PushAsync(new Views.EditarProduto
             {
                 BindingContext = p,
@@ -121,18 +117,62 @@ public partial class ListaProduto : ContentPage
         try
         {
             lista.Clear();
-
             List<Produto> tmp = await App.Db.GetAll();
-
             tmp.ForEach(i => lista.Add(i));
         }
         catch (Exception ex)
         {
             await DisplayAlert("Ops", ex.Message, "OK");
-
-        } finally
+        }
+        finally
         {
             lst_produtos.IsRefreshing = false;
         }
+    }
+
+
+
+    private void CarregarCategorias() // método CarregarCategorias
+    {
+        var categorias = new List<string> // cria uma lista de categorias
+    {
+        "Todos",
+        "Alimentos",
+        "Higiene",
+        "Limpeza"
+    };
+        pck_categoria_filtro.ItemsSource = categorias; // atribui a lista de categorias ao Picker
+    }
+
+
+
+
+    private async Task FiltrarProdutosPorCategoria(string categoria) // método FiltrarProdutosPorCategoria
+    {
+        lista.Clear(); // limpa a lista de produtos
+        List<Produto> produtos; // cria uma lista produtos
+
+        if (categoria == "Todos")   // se a categoria for "Todos"
+        {
+            produtos = await App.Db.GetAll(); // busca todos os produtos
+        }
+        else
+        {
+            produtos = await App.Db.SearchByCategory(categoria); // busca produtos pela categoria
+        }
+
+        produtos.ForEach(i => lista.Add(i)); // adiciona os produtos na lista
+    }
+
+    private async void pck_categoria_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        string categoriaSelecionada = pck_categoria_filtro.SelectedItem.ToString(); // pega a categoria selecionada
+        await FiltrarProdutosPorCategoria(categoriaSelecionada); // chama o método FiltrarProdutosPorCategoria
+    }
+
+    private async void ToolbarItem_Clicked_2(object sender, EventArgs e)
+    {
+        await Navigation.PushAsync(new RelatorioGastosPorCategoria());
+        // navega para a página RelatorioGastosPorCategoria
     }
 }
